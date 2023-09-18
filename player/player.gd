@@ -1,7 +1,9 @@
 extends CharacterBody3D
 
 
-const SPEED = 3.0
+const SPEED_WALK = 2.8
+const SPEED_RUN = 5.0
+const ACCELERATION = 5
 const JUMP_VELOCITY = 4.5
 const MAX_PITCH_UP = deg_to_rad(80)
 const MAX_PITCH_DOWN = deg_to_rad(-80)
@@ -18,7 +20,8 @@ var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 
 var move_direction := Vector3.FORWARD
-
+var move_speed := SPEED_WALK
+var is_running := false
 
 func _ready():
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -30,6 +33,8 @@ func _process(delta):
 
 
 func _physics_process(delta):
+	is_running = Input.is_action_pressed("mod_run")
+	
 	# Add the gravity.
 	if not is_on_floor():
 		velocity.y -= gravity * delta
@@ -45,18 +50,21 @@ func _physics_process(delta):
 	move_direction = move_direction.slerp(direction, 8 * delta)
 	visuals.look_at(move_direction + position)
 	
+	move_speed = move_toward(move_speed, SPEED_RUN if is_running else SPEED_WALK, ACCELERATION * delta)
+	var move_animation := "running" if is_running else "walking" 
+	
 	if direction:
-		if animation_player.current_animation != "walking":
-			animation_player.play("walking")
+		if animation_player.current_animation != move_animation:
+			animation_player.play(move_animation)
 		
-		velocity.x = direction.x * SPEED
-		velocity.z = direction.z * SPEED
+		velocity.x = direction.x * move_speed
+		velocity.z = direction.z * move_speed
 	else:
 		if animation_player.current_animation != "idle":
 			animation_player.play("idle")
 		
-		velocity.x = move_toward(velocity.x, 0, SPEED)
-		velocity.z = move_toward(velocity.z, 0, SPEED)
+		velocity.x = move_toward(velocity.x, 0, move_speed)
+		velocity.z = move_toward(velocity.z, 0, move_speed)
 	
 	move_and_slide()
 
