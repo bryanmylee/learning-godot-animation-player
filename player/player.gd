@@ -4,6 +4,8 @@ extends CharacterBody3D
 const SPEED_WALK = 2.8
 const SPEED_RUN = 5.0
 const ACCELERATION = 5
+const DECELERATION_GROUND = 10
+const DECELERATION_AIR = 1
 const JUMP_VELOCITY = 4.5
 const MAX_PITCH_UP = deg_to_rad(80)
 const MAX_PITCH_DOWN = deg_to_rad(-80)
@@ -77,8 +79,9 @@ func _physics_process(delta):
 			and animation_player.current_animation != "idle":
 			animation_player.play("idle")
 		
-		velocity.x = move_toward(velocity.x, 0, move_speed)
-		velocity.z = move_toward(velocity.z, 0, move_speed)
+		var deceleration := DECELERATION_GROUND if is_on_floor() else DECELERATION_AIR
+		velocity.x = move_toward(velocity.x, 0, deceleration * delta)
+		velocity.z = move_toward(velocity.z, 0, deceleration * delta)
 	
 	move_and_slide()
 
