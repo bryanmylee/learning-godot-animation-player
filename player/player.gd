@@ -1,7 +1,7 @@
 extends CharacterBody3D
 
 
-const SPEED = 5.0
+const SPEED = 3.0
 const JUMP_VELOCITY = 4.5
 const MAX_PITCH_UP = deg_to_rad(80)
 const MAX_PITCH_DOWN = deg_to_rad(-80)
@@ -9,8 +9,16 @@ const MAX_PITCH_DOWN = deg_to_rad(-80)
 @export var mouse_sensitivity_x := 5
 @export var mouse_sensitivity_y := 7
 
+@onready var camera_pitch_pivot := $CameraPitchPivot
+@onready var animation_player := $Visuals/mixamo_base/AnimationPlayer
+@onready var visuals := $Visuals
+
 # Get the gravity from the project settings to be synced with RigidBody nodes.
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
+
+
+var move_direction := Vector3.FORWARD
+
 
 func _ready():
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -33,13 +41,23 @@ func _physics_process(delta):
 	# Get the input direction and handle the movement/deceleration.
 	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	
+	move_direction = move_direction.slerp(direction, 8 * delta)
+	visuals.look_at(move_direction + position)
+	
 	if direction:
+		if animation_player.current_animation != "walking":
+			animation_player.play("walking")
+		
 		velocity.x = direction.x * SPEED
 		velocity.z = direction.z * SPEED
 	else:
+		if animation_player.current_animation != "idle":
+			animation_player.play("idle")
+		
 		velocity.x = move_toward(velocity.x, 0, SPEED)
 		velocity.z = move_toward(velocity.z, 0, SPEED)
-
+	
 	move_and_slide()
 
 
@@ -48,7 +66,7 @@ func _input(event):
 		handle_mouse_button(event)
 		return
 	if event is InputEventMouseMotion:
-		handle_mouse_move(event)
+		handle_mouse_motion(event)
 		return
 
 
@@ -57,7 +75,7 @@ func handle_mouse_button(event: InputEventMouseButton):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-func handle_mouse_move(event: InputEventMouseMotion):
+func handle_mouse_motion(event: InputEventMouseMotion):
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
 	
@@ -65,8 +83,10 @@ func handle_mouse_move(event: InputEventMouseMotion):
 	var d_pitch = -event.relative.y * 0.0001 * mouse_sensitivity_y
 	
 	rotate_y(d_twist)
-	$CameraPitchPivot.rotation.x = clamp(
-		$CameraPitchPivot.rotation.x + d_pitch,
+	visuals.rotate_y(-d_twist)
+	
+	camera_pitch_pivot.rotation.x = clamp(
+		camera_pitch_pivot.rotation.x + d_pitch,
 		MAX_PITCH_DOWN,
 		MAX_PITCH_UP
 	)
